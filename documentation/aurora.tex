@@ -1,0 +1,156 @@
+
+\section{Aurora protocol}
+Aurora 64B/66B is a link-layer, point-to-point protocol that enables high-speed data transfers between two Aurora partners. The Aurora channel, established between the partners, can comprise one or more simplex or full-duplex lanes. Data frames are transmitted in 66-bit blocks, consisting of a two-bit synchronization preamble and 64 bits of data. The channel is shared for both data and control messages. 
+
+The FastIC+ itself implements a simplified Aurora transmitter with one simplex lane capable of transmission at speeds from \SI{80}{Mbps} to \SI{1.28}{Gbps}.
+
+\subsection{Frame notation}
+Frame notation and bit order adopted from the Aurora specification \cite{auroraSpec} will be used in this document. In this notation the leftmost bit is the one transmitted first onto the bus and is considered the most significant in the block. The rightmost bit is LSB. An example of a block notation can be seen in Figure \ref{fig:blockExample}.
+\\
+\FloatBarrier
+\begin{figure}[htpb]
+    \begin{center}
+        \begin{bytefield}[endianness=little,bitwidth=1em]{32}
+            \bitheader{0-33} \\
+            \bitbox{1}{\texttt{0}} & \bitbox{1}{\texttt{1}} & \bitbox{8}{\texttt{MSB}} &
+            \bitbox{8}{} & \bitbox{8}{} & \bitbox{8}{}\\[3ex]
+            \hfill
+            \bitheader[lsb=34]{34-65} \\
+            \hfill
+            \bitbox{8}{} & \bitbox{8}{} & \bitbox{8}{} & \bitbox{8}{\texttt{LSB}}
+        \end{bytefield}
+        \caption{Example Aurora block structure}
+        \label{fig:blockExample}
+    \end{center}
+\end{figure}
+%
+\subsection{Encoding}
+As previously mentioned, the Aurora protocol utilizes the commonly used 64B/66B encoding. This encoding scheme converts 64 bits of data into a 66-bit block by appending a two-bit preamble. The \verb|01| preamble signifies that the block contains 8 octets of data and is therefore called a \emph{Data block}. If the preamble is \verb|10|, the block is recognized as \emph{Control block} with the most significant octet in the block being a \emph{BTF} (Block Type Field). The remaining 7 octets are data. Preambles \verb|00| and \verb|11| are interpreted as errors.
+\newline\newline
+FastIC+ is capable of transmitting the \emph{Data block} and four of the \emph{Control block} types:
+\begin{itemize}
+    \item \emph{Separator-7} block indicated by the \emph{BTF} value \verb|0xE1|,
+    \item \emph{Separator} block indicated by the \emph{BTF} value \verb|0x1E|,
+    \item \emph{User K-Block} with \emph{BTF} value indicating the ID of the block (see \ref{sec:kblock}),
+    \item \emph{Idle} block indicated by the \emph{BTF} value \verb|0x78|.
+\end{itemize}
+
+\subsubsection{Data block}
+A \emph{Data block}, shown in Figure \ref{fig:data}, consists of eight octets of raw data. Data blocks are transmitted only when eight or more octets of data are available. For smaller packets, the \emph{Separator-7} and \emph{Separator} blocks are used.
+\\
+\FloatBarrier
+\begin{figure}[!htpb]
+    \begin{center}
+        \begin{bytefield}[endianness=little,bitwidth=1em]{32}
+            \bitheader{0-33} \\
+            \bitbox{1}{\texttt{0}} & \bitbox{1}{\texttt{1}} & \bitbox{8}{\texttt{D7}} &
+            \bitbox{8}{\texttt{D6}} & \bitbox{8}{\texttt{D5}} & \bitbox{8}{\texttt{D4}}\\[3ex]
+            \hfill
+            \bitheader[lsb=34]{34-65} \\
+            \hfill
+            \bitbox{8}{D3} & \bitbox{8}{\texttt{D2}} & \bitbox{8}{\texttt{D1}} & \bitbox{8}{\texttt{D0}}
+        \end{bytefield}
+        \caption{Data block structure}
+        \label{fig:data}
+    \end{center}
+\end{figure}
+
+\subsubsection{Separator-7 block}
+A \emph{Separator-7 block} is transmitted when only seven octets of data remain to be sent over the interface. The block consists of the \emph{BTF} indicating the  \emph{Separator-7} type and seven valid octets of data as shown in Figure \ref{fig:sep7}.
+\\
+\FloatBarrier
+\begin{figure}[!htpb]
+    \begin{center}
+        \begin{bytefield}[endianness=little,bitwidth=1em]{32}
+            \bitheader{0-33} \\
+            \bitbox{1}{\texttt{1}} & \bitbox{1}{\texttt{0}} & \bitbox{8}{\texttt{0xE1}} &
+            \bitbox{8}{\texttt{D6}} & \bitbox{8}{\texttt{D5}} & \bitbox{8}{\texttt{D4}}\\[3ex]
+            \hfill
+            \bitheader[lsb=34]{34-65} \\
+            \hfill
+            \bitbox{8}{\texttt{D3}} & \bitbox{8}{\texttt{D2}} & \bitbox{8}{\texttt{D1}} & \bitbox{8}{\texttt{D0}}
+        \end{bytefield}
+        \caption{Separator-7 block structure}
+        \label{fig:sep7}
+    \end{center}
+\end{figure}
+\newpage
+\subsubsection{Separator block}
+A \emph{Separator block} is transmitted when 0-6 octets of data remain to be sent. The block, shown in Figure \ref{fig:sep}, consists of the \emph{BTF} indicating the \emph{Separator} type and a field indicating the number of valid data octets. The order of the valid octets is from LSB to MSB. 
+\\
+\FloatBarrier
+\begin{figure}[!htpb]
+    \begin{center}
+        \begin{bytefield}[endianness=little,bitwidth=1em]{32}
+            \bitheader{0-33} \\
+            \bitbox{1}{\texttt{1}} & \bitbox{1}{\texttt{0}} & \bitbox{8}{\texttt{0x1E}} &
+            \bitbox{8}{\texttt{VALID OCTETS}} & \bitbox{8}{\texttt{D5}} & \bitbox{8}{\texttt{D4}}\\[3ex]
+            \hfill
+            \bitheader[lsb=34]{34-65} \\
+            \hfill
+            \bitbox{8}{\texttt{D3}} & \bitbox{8}{\texttt{D2}} & \bitbox{8}{\texttt{D1}} & \bitbox{8}{\texttt{D0}}
+        \end{bytefield}
+        \caption{Separator block structure}
+        \label{fig:sep}
+    \end{center}
+\end{figure}
+
+\subsubsection{User K-block}
+\label{sec:kblock}
+\emph{User K-Blocks} are provided by the Aurora specification to allow the user application to send specific control messages separately from the data. Figure \ref{fig:kblock} shows the \emph{K-Block} comprising the \emph{BTF} and seven data octets. There are nine \emph{K-Blocks} available with IDs 0 to 8, corresponding to \emph{BTFs} \verb|0xD2|, \verb|0x99|, \verb|0x55|, \verb|0xB4|, \verb|0xCC|, \verb|0x66|, \verb|0x33|, \verb|0x4B| and \verb|0x87|, respectively.
+\\
+\FloatBarrier
+\begin{figure}[!htpb]
+    \begin{center}
+        \begin{bytefield}[endianness=little,bitwidth=1em]{32}
+            \bitheader{0-33} \\
+            \bitbox{1}{\texttt{1}} & \bitbox{1}{\texttt{0}} & \bitbox{8}{\texttt{BTF}} &
+            \bitbox{8}{\texttt{D6}} & \bitbox{8}{\texttt{D5}} & \bitbox{8}{\texttt{D4}}\\[3ex]
+            \hfill
+            \bitheader[lsb=34]{34-65} \\
+            \hfill
+            \bitbox{8}{\texttt{D3}} & \bitbox{8}{\texttt{D2}} & \bitbox{8}{\texttt{D1}} & \bitbox{8}{\texttt{D0}}
+        \end{bytefield}
+        \caption{User K-Block structure}
+        \label{fig:kblock}
+    \end{center}
+\end{figure}
+\newpage
+\subsubsection{Idle block}
+Figure \ref{fig:idle} shows a structure of an \emph{Idle block}. When no data is available for transmission, \emph{Idle} blocks are transmitted instead to maintain the receivers ability to remain in sync and recover the data clock.
+\\
+\FloatBarrier
+\begin{figure}[h!]
+    \begin{center}
+        \begin{bytefield}[endianness=little,bitwidth=1em]{32}
+            \bitheader{0-33} \\
+            \bitbox{1}{\texttt{1}} & \bitbox{1}{\texttt{0}} & \bitbox{8}{\texttt{0x78}} &
+            \bitbox{1}{\texttt{\tiny CC}} & \bitbox{1}{\texttt{\tiny CB}} & \bitbox{1}{\texttt{\tiny NR}} & \bitbox{1}{\texttt{\tiny SA}} & \bitbox{1}{\texttt{0}} & \bitbox{1}{\texttt{0}} & \bitbox{1}{\texttt{0}} & \bitbox{1}{\texttt{0}} & \bitbox[ltb]{16}{\texttt{Don't care}}\\[3ex]
+            \hfill
+            \bitheader[lsb=34]{34-65} \\
+            \hfill
+            \bitbox[tbr]{32}{\texttt{Don't care}}
+        \end{bytefield}
+    \end{center}
+    \caption{Idle block structure}
+    \label{fig:idle}
+\end{figure}
+\FloatBarrier
+%
+%
+\noindent
+The \emph{Idle block} contains four flag bits determining the type of the block:
+\begin{itemize}
+    \item \verb|CC| bit indicating that the block is \emph{Clock Compensation} idle,
+    \item \verb|CB| bit indicating that the block is \emph{Channel Bonding} idle,
+    \item \verb|NR| bit indicating that the block is a \emph{Not Ready} idle,
+    \item \verb|SA| bit indicating that the receivers obey the \emph{Strict Alignment} rules.
+\end{itemize}
+As the Aurora interface in the FastIC+ is simplex and doesn't implement the functionality described above, all the flag bits in the block are set to zero thus only a \emph{Regular Idle} block is being transmitted. 
+
+\subsection{Scrambling}
+Whenever either \emph{Data Block} or \emph{Control Block} is transmitted, the eight octets in the block have to be scrambled with the polynomial shown in Equation \ref{eq:scrambler}. Note that the two bit preamble must never be scrambled.
+\begin{equation}
+    P(x) = 1 + x^{39} + x^{58}
+    \label{eq:scrambler}
+\end{equation}
