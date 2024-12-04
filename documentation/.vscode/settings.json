@@ -30,6 +30,18 @@
             "%DOCFILE%"
           ],
           "env": {}
+        },
+        {
+          "name": "copy to root",
+          "command": "copy",
+          "args": ["%DOCFILE%.pdf", "../readout-documentation.pdf"]
         }
       ],
+
+      "latex-workshop.latex.recipes": [
+        {
+          "name": "latexmk",
+          "tools": ["latexmk", "copy to root"]
+        },
+      ]
   }

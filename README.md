@@ -1,0 +1,2 @@
+# FastIC+ readout documentation
+This repository contains the documentation for the FastIC+ readout system. The [documentation](readout-documentation.pdf) describes the system in-depth and details the ideas behind the concept. The [users manual](readout-manual.pdf) describes the principles of working with the readout system.  

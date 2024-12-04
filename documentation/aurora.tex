@@ -1,9 +1,6 @@
 
 \section{Aurora protocol}
 Aurora 64B/66B is a link-layer, point-to-point protocol that enables high-speed data transfers between two Aurora partners. The Aurora channel, established between the partners, can comprise one or more simplex or full-duplex lanes. Data frames are transmitted in 66-bit blocks, consisting of a two-bit synchronization preamble and 64 bits of data. The channel is shared for both data and control messages. 
-
-The FastIC+ itself implements a simplified Aurora transmitter with one simplex lane capable of transmission at speeds from \SI{80}{Mbps} to \SI{1.28}{Gbps}.
-
 \subsection{Frame notation}
 Frame notation and bit order adopted from the Aurora specification \cite{auroraSpec} will be used in this document. In this notation the leftmost bit is the one transmitted first onto the bus and is considered the most significant in the block. The rightmost bit is LSB. An example of a block notation can be seen in Figure \ref{fig:blockExample}.
 \\

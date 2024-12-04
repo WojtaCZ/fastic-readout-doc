@@ -1,104 +1,24 @@
-\section{FastIC+ packet structure}
-%
-\subsection{Data packet}
-%
-Each detection event on each channel of the FastIC+ is represented by a 48 bit data packet containing the digitized \emph{ToA} and \emph{ToT} values. The stream of packets is then encoded into Aurora data blocks. A structure of the packet is depicted in Figure \ref{fig:packet}.
-\\
-\FloatBarrier
-\begin{figure}[tph!]
-    \begin{center}
-        \begin{bytefield}[endianness=little,bitwidth=4em]{8}
-            \bitheader{0-7} \\
-            \bitbox{4}{\texttt{CHANNEL}} & \bitbox{2}{\texttt{TYPE}} & \bitbox[ltr]{2}{} \\
-            \bitbox[lr]{8}{\texttt{TIMESTAMP}} \\
-            \bitbox[lr]{8}{\texttt{(22 bits)}} \\
-            \bitbox[lrb]{4}{} & \bitbox[lrt]{4}{} \\
-            \bitbox[lr]{8}{\texttt{PULSE WIDTH (14 bits)}}  \\
-            \bitbox[lrb]{2}{} & \bitbox{1}{\texttt{DBG}} & \bitbox{1}{\texttt{CHP}} & \bitbox{1}{\texttt{TYP}} &
-            \bitbox{1}{\texttt{TSP}} & \bitbox{1}{\texttt{PWP}} & \bitbox{1}{\texttt{PAR}} 
-        \end{bytefield}
-    \end{center}
-    \caption{FastIC+ data packet structure}
-    \label{fig:packet}
-\end{figure}
-%
-\noindent The \verb|CHANNEL| field specifies the number of the channel that the event was detected on (0-7) or the trigger channel (8). The \verb|TYPE| field indicates the packet type where the following types are recognized:
-\begin{itemize}
-    \item \emph{ToA + non-linear ToT} type represented by the value \verb|00|,
-    \item \emph{ToA only} type represented by the value \verb|01|,
-    \item \emph{Linear ToT only} type represented by the value \verb|10|,
-    \item \emph{ToA + linear ToT} type represented by the value \verb|11|.
-\end{itemize}
-%
-\verb|TIMESTAMP| and \verb|PULSE WIDTH| fields contain the digitized ToA and ToT values. \verb|DBG| is a flag used in debug mode. The rest of the bits are even parity bits, namely:
-\begin{itemize}
-    \item \verb|CHP| parity bit of the \verb|CHANNEL| field,
-    \item \verb|TYP| parity bit of the \verb|TYPE| field,
-    \item \verb|TSP| parity bit of the \verb|TIMESTAMP| field,
-    \item \verb|PWP| parity bit of the \verb|PULSE WIDTH| field,
-    \item and the overall parity bit \verb|PAR| computed from all fields.
-\end{itemize}
+\section{FastIC+}
+The FastIC+ is an 8-channel front-end for photo detectors such as SiPM, PMT or MCP, capable of precisely
+measuring the Time-of-Arrival (ToA) and energy of photons hitting the detector from the Time-over-Treshold (ToT). 
 
-\subsection{Statistics packet}
-In addition to the data packets, FastIC+ also periodically transmits a statistics packet that contains basic information about the events. Structure of the packet is shown in Figure \ref{fig:statpacket}. This packet is sent onto the Aurora bus in two \emph{K-Blocks} due to the packet size being bigger than the \emph{K-Block} capacity. The first 56 bits are sent in a block with the \emph{BTF} of \verb|0x99|, the rest is sent in a second block with the \emph{BTF} of \verb|0x55|.
-\\
-\FloatBarrier
-\begin{figure}[tph!]
-    \begin{center}
-        \begin{bytefield}[endianness=little,bitwidth=4em]{8}
-            \bitheader{0-7} \\
-            \bitbox[lrt]{8}{\texttt{FIFO DROP}}\\
-            \bitbox[lr]{8}{\texttt{(20 bits)}}\\
-            \bitbox[lrb]{4}{} & \bitbox[lrt]{4}{}\\
-            \bitbox[lr]{8}{\texttt{PWIDTH DROP}}\\
-            \bitbox[lrb]{8}{\texttt{(20 bits)}}\\
-            \bitbox[lrt]{8}{\texttt{DCOUNT DROP}}\\
-            \bitbox[lr]{8}{\texttt{(20 bits)}}\\
-            \bitbox[lrb]{4}{} & \bitbox[lrt]{4}{}\\
-            \bitbox[lr]{8}{\texttt{TRIGGER DROP}}\\
-            \bitbox[lrb]{8}{\texttt{(20 bits)}}\\
-            \bitbox[lrt]{8}{\texttt{PULSE ERROR}}\\
-            \bitbox[lrb]{8}{\texttt{(16 bits)}}
-        \end{bytefield}
-    \end{center}
-    \caption{FastIC+ statistics packet structure}
-    \label{fig:statpacket}
-\end{figure}
-%
-\noindent The packet consists of the following fields:
+\subsection{Detection}
+\label{sec:fastic:detection}
+The detection part of the chip implements current mode front-ends capable of working with both positive and negative polarity sensors with dynamic range of \SI{5}{\micro\ampere} to \SI{20}{\milli\ampere} and capacitance range of \SI{10}{\pico\farad} to \SI{1}{\nano\farad}. The eight channels can either operate independently or in a summation mode and can be highly configured to suffice demanding user needs. Several triggering schemes are available for discriminating the photon impacts by their energy aswell as external trigger input and trigger output to allow synchronization of multiple chips. Three different measurement modes, 
 \begin{itemize}
-\item \verb|FIFO DROP| field containing a number of events dropped in the FIFO buffer.
-\item \verb|PWIDTH DROP| field containing a number of events dropped due to the pulse width being outside of the specified range.
-\item \verb|DCOUNT DROP| field holding the value of dark counts. This field is valid only if \emph{High-Energy Resolution} mode and \emph{Bandwidth optimization} is enabled. 
-\item \verb|TRIGGER DROP| field holding the number of packets dropped due to external trigger pulse not being validated. 
-\item \verb|PULSE ERROR| field being a malformed pulse counter. Malformed pulse is detected when two consecutive edges are read by the TDC. This may occur due to the limitation of one leading+falling edge per clock period.
+    \item ToA (Non linear ToT),
+    \item Energy (from ToT),
+    \item Hybrid (ToA + Energy),
 \end{itemize}
-\newpage
-%
-\subsection{Counter Extension + Event Counter packet}
-When no detection events are processed during the \emph{Coarse Counter Extension} inactivity period, the timestamp counter would overflow the timestamp field. The following packet, specified in Figure \ref{fig:extpacket}, is transmitted periodically so the receiver can base the data timestamp on the most recent coarse counter value, thus drastically increase the dynamic range of the time detection. The packet is encoded in an \emph{K-Block} with the \emph{BTF} of \verb|0xD2|.
-\\
-\FloatBarrier
-\begin{figure}[tph!]
-    \begin{center}
-        \begin{bytefield}[endianness=little,bitwidth=4em]{8}
-            \bitheader{0-7} \\
-            \bitbox[lrt]{8}{\texttt{PACKET COUNT}}\\
-            \bitbox[lr]{8}{\texttt{(23 bits)}}\\
-            \bitbox[lrb]{7}{} & \bitbox[lrt]{1}{}\\
-            \bitbox[lr]{8}{\texttt{COARSE COUNTER}}\\
-            \bitbox[lr]{8}{\texttt{(24 bits)}}\\
-            \bitbox[lrb]{7}{} & \bitbox{1}{\texttt{RST}}
-        \end{bytefield}
-    \end{center}
-    \caption{FastIC+ counter extension and event counter packet structure}
-    \label{fig:extpacket}
-\end{figure}
-%
-\noindent The packets fields are:
-\begin{itemize}
-    \item \verb|PACKET COUNT| field, which holds the number of data packets transmitted since the last reset event.
-    \item \verb|COARSE COUNTER| field holding the timestamp from the coarse counter.
-    \item \verb|RST| field indicating, that the coarse counter has been reset during the coarse counter packet period.  
-\end{itemize}
-%
+are present to allow the user to optimize for measurement of ToA, ToT or both. The maximum detection rate of the impacts is approximately \SI{2}{\mega\hertz} in the linear mode and \SI{50}{\mega\hertz} in non-linear mode. A \SI{40}{\mega\hertz} low jitter reference clock is required for the chip to operate.
+
+
+\subsection{Digitizing}
+The measured ToA and ToT are outputted separately for each channel as a digital pulse, where the beginning of the pulse marks the ToA of the photon and the length of the pulse encodes the energy (ToT). These channels are exposed to the user and can be used for photon detection.
+
+However in order to enhance the time measurement of the ToA and ToT pulses and offload this processing from the user, a \SI{25}{\pico\second} time bin TDC for digitizing the pulses directly on the chip has been implemented. This, in turn, has necessitated the need for a high-speed communication channel capable of transferring the resulting digital data stream. The Aurora 64B/66B protocol was chosen for its sufficient speed and easy interfacing with FPGAs. The FastIC+ itself implements a simplified Aurora transmitter with one simplex lane capable of transmission at speeds from \SI{80}{\mega\bit\per\second} to \SI{1.28}{\giga\bit\per\second}.
+
+\subsection{Configuration and testing}
+An I2C interface has been implemented alongside the Aurora bus to allow for easy configuration of the chip parameters. This interface can run at speeds up to \SI{1}{\mega\hertz} and can be shared between multiple FastIC+ chips. 
+
+For testing purposes, four debug pins are exposed to read out the state of the internal state machine. If not used for debugging, they can be utilized for configuration of the I2C address. 
